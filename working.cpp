@@ -26,8 +26,8 @@ vector<Image> readMNISTImages(const string& imageFile, const string& labelFile, 
     }
 
     // Skip headers
-    imagesFile.seekg(16);  // Magic number (4 bytes), num images (4), rows (4), cols (4)
-    labelsFile.seekg(8);   // Magic number (4 bytes), num items (4)
+    imagesFile.seekg(16);  
+    labelsFile.seekg(8);   
 
     for (int i = 0; i < numImages; i++) {
         Image img;
@@ -53,7 +53,6 @@ vector<Image> readMNISTImages(const string& imageFile, const string& labelFile, 
     return images;
 }
 
-// Utility functions
 double relu(double x) { return max(0.0, x); }
 double relu_deriv(double x) { return x > 0 ? 1.0 : 0.0; }
 
@@ -62,7 +61,7 @@ vector<double> softmax(const vector<double>& input) {
     double max_val = *max_element(input.begin(), input.end());
     double sum = 0;
     for (int i = 0; i < input.size(); i++) {
-        output[i] = exp(input[i] - max_val);  // Subtract max for numerical stability
+        output[i] = exp(input[i] - max_val);  
         sum += output[i];
     }
     for (int i = 0; i < input.size(); i++) {
@@ -75,12 +74,8 @@ vector<double> softmax(const vector<double>& input) {
 class CNN {
 private:
     // Layer 1
-    vector<vector<vector<double>>> conv1_weights;  // 5x5 filters, 6 feature maps
+    vector<vector<vector<double>>> conv1_weights;  
     vector<double> conv1_bias;
-    
-    // // Layer 2
-    // vector<vector<vector<double>>> conv2_weights;  // 5x5 filters, 16 feature maps
-    // vector<double> conv2_bias;
     
     // Fully connected layers
     vector<vector<double>> fc1_weights;
@@ -95,7 +90,6 @@ private:
     const int FC1_SIZE = 120;
     const int OUTPUT_SIZE = 10;
 
-    // Training parameters
     double learning_rate = 0.01;
 
 	// Gradients storage
@@ -113,7 +107,6 @@ public:
         normal_distribution<> d(0, 0.1);
 
 
-        // Initialize Conv1
         conv1_weights.resize(CONV1_FILTERS, vector<vector<double>>(FILTER_SIZE, vector<double>(FILTER_SIZE)));
         conv1_bias.resize(CONV1_FILTERS);
         for (int f = 0; f < CONV1_FILTERS; f++) {
@@ -212,7 +205,7 @@ public:
         
         fp.conv1_out = convolve(input, conv1_weights, conv1_bias, CONV1_FILTERS, INPUT_SIZE);
         
-        // Modified maxPool to store indices
+        //MaxPool 
         int input_size = fp.conv1_out[0].size();
         int output_size = input_size / POOL_SIZE;
         fp.pool1_out.resize(CONV1_FILTERS, vector<vector<double>>(output_size, vector<double>(output_size)));
@@ -290,7 +283,7 @@ public:
         for (auto& row : fc2_weight_grads)
             fill(row.begin(), row.end(), 0);
 
-        // 1. Output layer (FC2) gradients
+        //Output layer gradients
         vector<double> fc2_delta(OUTPUT_SIZE);
         for (int i = 0; i < OUTPUT_SIZE; i++) {
             fc2_delta[i] = fp.softmax_out[i] - target[i];
@@ -300,7 +293,7 @@ public:
             }
         }
 
-        // 2. FC1 gradients
+        //FC1 gradients
         vector<double> fc1_delta(FC1_SIZE);
         for (int i = 0; i < FC1_SIZE; i++) {
             double sum = 0;
@@ -314,12 +307,12 @@ public:
             }
         }
 
-        // 3. Pool1 and Conv1 gradients
+        //Pool1 and Conv1 gradients
         int pool_size = fp.pool1_out[0].size();
         vector<vector<vector<double>>> pool1_delta(CONV1_FILTERS, 
             vector<vector<double>>(pool_size, vector<double>(pool_size)));
         
-        // Unflatten fc1_delta
+        //Unflatten fc1_delta
         vector<vector<vector<double>>> flatten_delta(CONV1_FILTERS, 
             vector<vector<double>>(pool_size, vector<double>(pool_size)));
         int idx = 0;
@@ -356,7 +349,7 @@ public:
         for (int f = 0; f < CONV1_FILTERS; f++) {
             for (int i = 0; i < conv1_size; i++) {
                 for (int j = 0; j < conv1_size; j++) {
-                    if (fp.conv1_out[f][i][j] > 0) {  // ReLU derivative
+                    if (fp.conv1_out[f][i][j] > 0) { 
                         double delta = conv1_delta[f][i][j];
                         conv1_bias_grads[f] += delta;
                         for (int m = 0; m < FILTER_SIZE; m++) {
@@ -413,14 +406,14 @@ public:
                 vector<double> target(OUTPUT_SIZE, 0);
                 target[img.label] = 1.0;
                 
-                // Compute loss
+    
                 double loss = 0;
                 for (int j = 0; j < OUTPUT_SIZE; j++) {
                     loss -= target[j] * log(fp.softmax_out[j] + 1e-10);
                 }
                 total_loss += loss;
 
-                // Backward pass and weight update
+            
                 backward(img.data, fp, target);
 
                 int predicted = max_element(fp.softmax_out.begin(), fp.softmax_out.end()) - fp.softmax_out.begin();
@@ -435,14 +428,12 @@ public:
     double evaluate(const vector<Image>& test_data, vector<vector<int>>& confusion_matrix) {
 		int correct = 0;
 		
-		// Resize and initialize confusion matrix to zeros
 		confusion_matrix.resize(10, vector<int>(10, 0));
 		
 		for (const auto& img : test_data) {
 			ForwardPass fp = forward(img.data);
 			int predicted = max_element(fp.softmax_out.begin(), fp.softmax_out.end()) - fp.softmax_out.begin();
 			
-			// Update confusion matrix: actual label (row) vs predicted label (column)
 			confusion_matrix[img.label][predicted]++;
 			
 			if (predicted == img.label) correct++;
@@ -467,7 +458,6 @@ public:
 		}
 		cout << "   +----------------------------------------+\n";
 		
-		// Print per-class accuracy
 		cout << "\nPer-class accuracy:\n";
 		for (int i = 0; i < 10; i++) {
 			int true_positives = confusion_matrix[i][i];
@@ -528,17 +518,20 @@ public:
 
 int main() {
     // Load data
-    vector<Image> train_data = readMNISTImages("train-images.idx3-ubyte", "train-labels.idx1-ubyte", 60000);
+    cout << "Loading training and test data..." << endl;
+	vector<Image> train_data = readMNISTImages("train-images.idx3-ubyte", "train-labels.idx1-ubyte", 60000);
     vector<Image> test_data = readMNISTImages("t10k-images.idx3-ubyte", "t10k-labels.idx1-ubyte", 10000);
-
+	cout << "Loading finished" << endl;
     // Create and train CNN
     CNN cnn;
     cout << "Training started..." << endl;
-    cnn.train(train_data, 5, 1);  // 5 epochs, batch size 1
+    cnn.train(train_data, 5);  // 5 epochs
     
-    // Evaluate with confusion matrix
+    cout << "Parameters trained and updated. Beginning Evalution on test set" << endl;
+	// Evaluations
     vector<vector<int>> confusion_matrix;
     double accuracy = cnn.evaluate(test_data, confusion_matrix);
+	cout<< "Printing Results..."<< endl;
     cout << "Test accuracy: " << accuracy << "%" << endl;
 
     // Print confusion matrix
